@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Drawing;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization.Formatters.Soap;
@@ -8,6 +9,7 @@ using Newtonsoft.Json;
 using PointLib;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using Point = PointLib.Point;
 
 
 namespace FormsApp
@@ -50,7 +52,7 @@ namespace FormsApp
         private void btnSerialize_Click(object sender, EventArgs e)
         {
             var dlg = new SaveFileDialog();
-            dlg.Filter = "SOAP|*.soap|XML|*.xml|JSON|*.json|YAML|*.yaml|Binary|*.bin";
+            dlg.Filter = "SOAP|*.soap|XML|*.xml|JSON|*.json|YAML|*.yaml|Binary|*.bin|Custom Format|*.cust";
 
             if (dlg.ShowDialog() != DialogResult.OK)
                 return;
@@ -88,14 +90,23 @@ namespace FormsApp
                             w.Write(yaml);
                         }
                         break;
+                    case ".cust":
+                        using (var writer = new StreamWriter(fs))
+                        {
+                            foreach (var point in points)
+                            {
+                                writer.WriteLine(SerializePointToCustomFormat(point));
+                            }
+                        }
+                        break;
+
                 }
             }
         }
-
         private void btnDeserialize_Click(object sender, EventArgs e)
         {
             var dlg = new OpenFileDialog();
-            dlg.Filter = "SOAP|*.soap|XML|*.xml|JSON|*.json|YAML|*.yaml|Binary|*.bin";
+            dlg.Filter = "SOAP|*.soap|XML|*.xml|JSON|*.json|YAML|*.yaml|Binary|*.bin|Custom Format|*.cust";
 
             if (dlg.ShowDialog() != DialogResult.OK)
                 return;
@@ -132,11 +143,71 @@ namespace FormsApp
                             points = deserializer.Deserialize<Point[]>(r);
                         }
                         break;
+                    case ".cust":
+                        using (var reader = new StreamReader(fs))
+                        {
+                            var tempPoints = new System.Collections.Generic.List<Point>();
+                            string line;
+                            while ((line = reader.ReadLine()) != null)
+                            {
+                                var point = DeserializePointFromCustomFormat(line);
+                                tempPoints.Add(point);
+                            }
+                            points = tempPoints.ToArray();
+                        }
+                        break;
                 }
             }
 
+
             listBox.DataSource = null;
             listBox.DataSource = points;
+        }
+        private string SerializePointToCustomFormat(Point point)
+        {
+            if (point is Point3D point3D)
+            {
+                return $"X={point.X},Y={point.Y},Z={point3D.Z}";
+            }
+            else
+            {
+                return $"X={point.X},Y={point.Y}";
+            }
+        }
+
+        private Point DeserializePointFromCustomFormat(string line)
+        {
+            var parts = line.Split(',');
+
+            int x = 0, y = 0, z = 0;
+
+            foreach (var part in parts)
+            {
+                var keyValue = part.Split('=');
+                if (keyValue.Length == 2)
+                {
+                    switch (keyValue[0].Trim())
+                    {
+                        case "X":
+                            x = int.Parse(keyValue[1].Trim());
+                            break;
+                        case "Y":
+                            y = int.Parse(keyValue[1].Trim());
+                            break;
+                        case "Z":
+                            z = int.Parse(keyValue[1].Trim());
+                            break;
+                    }
+                }
+            }
+            if (z == 0)
+            {
+                return new Point { X = x, Y = y };
+            }
+            else
+            {
+                return new Point3D { X = x, Y = y, Z = z };
+            }
         }
     }
 }
