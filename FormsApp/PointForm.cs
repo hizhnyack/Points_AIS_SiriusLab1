@@ -140,7 +140,23 @@ namespace FormsApp
                             var deserializer = new DeserializerBuilder()
                                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
                                 .Build();
-                            points = deserializer.Deserialize<Point[]>(r);
+
+                            var yamlObjects = deserializer.Deserialize<System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, int>>>(r);
+                            var tempPoints = new System.Collections.Generic.List<Point>();
+
+                            foreach (var obj in yamlObjects)
+                            {
+                                if (obj.ContainsKey("z"))
+                                {
+                                    tempPoints.Add(new Point3D { X = obj["x"], Y = obj["y"], Z = obj["z"] });
+                                }
+                                else
+                                {
+                                    tempPoints.Add(new Point { X = obj["x"], Y = obj["y"] });
+                                }
+                            }
+
+                            points = tempPoints.ToArray();
                         }
                         break;
                     case ".cust":
