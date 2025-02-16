@@ -6,6 +6,7 @@ using System.Runtime.Serialization.Formatters.Soap;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using PointLib;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -131,7 +132,7 @@ namespace FormsApp
                         using (var r = new StreamReader(fs))
                         {
                             string json = r.ReadToEnd();
-                            points = JsonConvert.DeserializeObject<Point3D[]>(json);
+                            points = JsonConvert.DeserializeObject<Point[]>(json, new PointJsonConverter());
                         }
                         break;
                     case ".yaml":
@@ -223,6 +224,41 @@ namespace FormsApp
             else
             {
                 return new Point3D { X = x, Y = y, Z = z };
+            }
+        }
+        public class PointJsonConverter : JsonConverter
+        {
+            public override bool CanConvert(Type objectType)
+            {
+                return objectType == typeof(Point);
+            }
+
+            public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+            {
+                JObject obj = JObject.Load(reader);
+
+                if (obj.ContainsKey("Z"))
+                {
+                    return new Point3D
+                    {
+                        X = obj["X"]?.Value<int>() ?? 0,
+                        Y = obj["Y"]?.Value<int>() ?? 0,
+                        Z = obj["Z"]?.Value<int>() ?? 0
+                    };
+                }
+                else
+                {
+                    return new Point
+                    {
+                        X = obj["X"]?.Value<int>() ?? 0,
+                        Y = obj["Y"]?.Value<int>() ?? 0
+                    };
+                }
+            }
+
+            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+            {
+                serializer.Serialize(writer, value);
             }
         }
     }
